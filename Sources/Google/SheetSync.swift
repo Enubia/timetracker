@@ -11,7 +11,7 @@ enum SyncStatus: Equatable {
 actor SheetSync {
     private let queue: PendingQueue
     private var client: SheetsClient?
-    private var headerEnsured = false
+    private var setupEnsured = false
     private var isFlushing = false
 
     init(queue: PendingQueue) {
@@ -26,7 +26,7 @@ actor SheetSync {
         let account = try ServiceAccount.from(serviceAccountJSON)
         let auth = GoogleAuth(account: account)
         client = SheetsClient(auth: auth, spreadsheetId: sheetId)
-        headerEnsured = false
+        setupEnsured = false
     }
 
     func testConnection() async throws -> String {
@@ -42,9 +42,10 @@ actor SheetSync {
 
         guard !queue.all().isEmpty else { return .synced(now) }
         do {
-            if !headerEnsured {
+            if !setupEnsured {
                 try await client.ensureHeader()
-                headerEnsured = true
+                try await client.ensureOverhoursSetup()
+                setupEnsured = true
             }
             while let first = queue.all().first {
                 try await client.append(row: first.row())
