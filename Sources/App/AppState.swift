@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 import Combine
@@ -16,6 +17,7 @@ final class AppState: ObservableObject {
     private let sync: SheetSync
     private var timer: Timer?
     private var nudgedTenHours = false
+    private var didLaunch = false
 
     init() {
         self.sync = SheetSync(queue: pending)
@@ -92,6 +94,8 @@ final class AppState: ObservableObject {
     func retrySync() { Task { await flush() } }
 
     func onLaunch() {
+        guard !didLaunch else { return }
+        didLaunch = true
         if let restored = liveStore.load() { session = restored }
         if let json = KeychainStore.load(), !Preferences.sheetId.isEmpty {
             let sheetId = Preferences.sheetId
@@ -102,6 +106,12 @@ final class AppState: ObservableObject {
         if !UserDefaults.standard.bool(forKey: "didSetInitialLaunchAtLogin") {
             LaunchAtLogin.set(true)
             UserDefaults.standard.set(true, forKey: "didSetInitialLaunchAtLogin")
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.onWake() }
         }
     }
 

@@ -10,10 +10,6 @@ struct TimeTrackerApp: App {
             PopoverView(app: app)
                 .onAppear {
                     app.onLaunch()
-                    NSWorkspace.shared.notificationCenter.addObserver(
-                        forName: NSWorkspace.didWakeNotification,
-                        object: nil, queue: .main
-                    ) { _ in app.onWake() }
                 }
         } label: {
             MenuBarLabel(app: app)
