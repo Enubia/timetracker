@@ -15,5 +15,10 @@ struct TimeTrackerApp: App {
             MenuBarLabel(app: app)
         }
         .menuBarExtraStyle(.window)
+
+        Window("TimeTracker Settings", id: "settings") {
+            SettingsView(app: app)
+        }
+        .windowResizability(.contentSize)
     }
 }

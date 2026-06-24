@@ -1,8 +1,9 @@
 import SwiftUI
+import AppKit
 
 struct PopoverView: View {
     @ObservedObject var app: AppState
-    @State private var showSettings = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -22,7 +23,6 @@ struct PopoverView: View {
         }
         .padding()
         .frame(width: 300)
-        .sheet(isPresented: $showSettings) { SettingsView(app: app) }
     }
 
     private var statusLine: some View {
@@ -71,7 +71,10 @@ struct PopoverView: View {
                 Button("Open Sheet") { openSheet() }
                     .disabled(Preferences.sheetId.isEmpty)
                 Spacer()
-                Button("Settings") { showSettings = true }
+                Button("Settings") {
+                    openWindow(id: "settings")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
                 Button("Quit") { NSApplication.shared.terminate(nil) }
             }
         }
