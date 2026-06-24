@@ -17,7 +17,8 @@ actor GoogleAuth {
             return token
         }
         let assertion = try JWTSigner.assertion(for: account, scope: scope, now: now)
-        var request = URLRequest(url: URL(string: account.tokenUri)!)
+        guard let tokenURL = URL(string: account.tokenUri) else { throw AuthError.badResponse }
+        var request = URLRequest(url: tokenURL)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         let body = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=\(assertion)"
