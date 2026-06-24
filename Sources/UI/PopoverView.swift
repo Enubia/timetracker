@@ -4,6 +4,7 @@ import AppKit
 struct PopoverView: View {
     @ObservedObject var app: AppState
     @Environment(\.openWindow) private var openWindow
+    @State private var editingStart = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -40,11 +41,28 @@ struct PopoverView: View {
 
     private var figures: some View {
         VStack(alignment: .leading, spacing: 2) {
-            if let start = app.todayStartString { Text("Start: \(start)") }
+            if let start = app.todayStartString {
+                HStack {
+                    Text("Start: \(start)")
+                    Spacer()
+                    Button(editingStart ? "Done" : "Edit") { editingStart.toggle() }
+                        .buttonStyle(.link)
+                }
+                if editingStart {
+                    DatePicker("", selection: Binding(
+                        get: { app.session.start ?? Date() },
+                        set: { app.adjustStart(to: $0) }
+                    ), displayedComponents: [.hourAndMinute])
+                    .labelsHidden()
+                }
+            }
             Text("Break: \(app.todayBreakString)")
             Text("Worked: \(app.todayNetString)")
         }
         .font(.callout).foregroundStyle(.secondary)
+        .onChange(of: app.session.start) { _, newValue in
+            if newValue == nil { editingStart = false }
+        }
     }
 
     @ViewBuilder private var buttons: some View {
