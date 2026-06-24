@@ -13,14 +13,13 @@ final class AppState: ObservableObject {
 
     private let liveStore = LiveSessionStore()
     private let history = HistoryLog()
-    private let pending = PendingQueue()
     private let sync: SheetSync
     private var timer: Timer?
     private var nudgedTenHours = false
     private var didLaunch = false
 
     init() {
-        self.sync = SheetSync(queue: pending)
+        self.sync = SheetSync(queue: PendingQueue())
     }
 
     var menuBarText: String? {
@@ -61,6 +60,7 @@ final class AppState: ObservableObject {
 
     func adjustStart(to newStart: Date) {
         guard session.state == .working || session.state == .onBreak else { return }
+        guard newStart <= Date() else { return }
         session.start = newStart
         persist()
     }
@@ -123,10 +123,9 @@ final class AppState: ObservableObject {
     private func finalizeAndReset() {
         let summary = AutoBreak.summarize(session, timeZone: timeZone)
         history.append(summary)
-        pending.enqueue(summary)
         session = .idle()
         liveStore.clear()
-        Task { await flush() }
+        Task { await sync.enqueue(summary); await flush() }
     }
 
     private func flush() async {

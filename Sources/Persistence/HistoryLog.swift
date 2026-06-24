@@ -12,7 +12,11 @@ struct HistoryLog {
             handle.seekToEndOfFile()
             handle.write(line)
         } else {
-            try? line.write(to: url, options: .atomic)
+            do {
+                try line.write(to: url, options: .atomic)
+            } catch {
+                NSLog("TimeTracker: history append failed: \(error)")
+            }
         }
     }
 }

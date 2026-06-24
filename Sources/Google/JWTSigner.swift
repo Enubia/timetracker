@@ -5,12 +5,18 @@ enum JWTSigner {
     enum JWTError: Error { case badPrivateKey, signFailed }
 
     static func assertion(for account: ServiceAccount, scope: String, now: Date, lifetimeSeconds: Int = 3600) throws -> String {
-        let header = #"{"alg":"RS256","typ":"JWT"}"#
         let iat = Int(now.timeIntervalSince1970)
         let exp = iat + lifetimeSeconds
-        let claims = "{\"iss\":\"\(account.clientEmail)\",\"scope\":\"\(scope)\",\"aud\":\"\(account.tokenUri)\",\"iat\":\(iat),\"exp\":\(exp)}"
+        let headerData = try JSONSerialization.data(withJSONObject: ["alg": "RS256", "typ": "JWT"])
+        let claimsData = try JSONSerialization.data(withJSONObject: [
+            "iss": account.clientEmail,
+            "scope": scope,
+            "aud": account.tokenUri,
+            "iat": iat,
+            "exp": exp,
+        ])
 
-        let signingInput = base64url(Data(header.utf8)) + "." + base64url(Data(claims.utf8))
+        let signingInput = base64url(headerData) + "." + base64url(claimsData)
         let key = try privateKey(from: account.privateKey)
 
         var error: Unmanaged<CFError>?
@@ -55,7 +61,7 @@ enum JWTSigner {
                 let len = Int(bytes[i + 2]) << 8 | Int(bytes[i + 3])
                 let start = i + 4
                 let end = start + len
-                if end <= bytes.count {
+                if end <= bytes.count && bytes[start] == 0x30 {
                     return Data(bytes[start..<end])
                 }
             }
