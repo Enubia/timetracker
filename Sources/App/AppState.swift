@@ -18,7 +18,7 @@ final class AppState: ObservableObject {
     private var nudgedTenHours = false
 
     init() {
-        self.sync = SheetSync(queue: PendingQueue())
+        self.sync = SheetSync(queue: pending)
     }
 
     var menuBarText: String? {
@@ -66,7 +66,7 @@ final class AppState: ObservableObject {
     var hasStaleSession: Bool {
         guard let start = session.start, session.state == .working || session.state == .onBreak else { return false }
         var cal = Calendar(identifier: .gregorian); cal.timeZone = timeZone
-        return !cal.isDate(start, inSameDayAs: nowTick)
+        return !cal.isDate(start, inSameDayAs: Date())
     }
 
     func endStaleSession(at end: Date) {
@@ -76,13 +76,13 @@ final class AppState: ObservableObject {
     }
 
     func configureGoogle(json: Data, sheetId: String) async -> Result<String, Error> {
-        guard KeychainStore.save(json: json) else {
-            return .failure(NSError(domain: "TimeTracker", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not save key to Keychain"]))
-        }
-        Preferences.sheetId = sheetId
         do {
             try await sync.configure(serviceAccountJSON: json, sheetId: sheetId)
             let title = try await sync.testConnection()
+            guard KeychainStore.save(json: json) else {
+                return .failure(NSError(domain: "TimeTracker", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not save key to Keychain"]))
+            }
+            Preferences.sheetId = sheetId
             return .success(title)
         } catch {
             return .failure(error)
@@ -99,7 +99,6 @@ final class AppState: ObservableObject {
         }
         Notifier.requestAuthorization()
         startTimer()
-        Task { await flush() }
         if !UserDefaults.standard.bool(forKey: "didSetInitialLaunchAtLogin") {
             LaunchAtLogin.set(true)
             UserDefaults.standard.set(true, forKey: "didSetInitialLaunchAtLogin")
