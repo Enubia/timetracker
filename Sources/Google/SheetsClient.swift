@@ -1,7 +1,7 @@
 import Foundation
 
 struct SheetsClient {
-    enum SheetsError: Error { case http(Int) }
+    enum SheetsError: Error { case http(Int), badSpreadsheetId }
 
     private let auth: GoogleAuth
     private let spreadsheetId: String
@@ -13,21 +13,31 @@ struct SheetsClient {
         self.spreadsheetId = spreadsheetId
     }
 
+    private func makeURL(path: String = "", query: String? = nil) throws -> URL {
+        guard let id = spreadsheetId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+            throw SheetsError.badSpreadsheetId
+        }
+        var string = "\(base)/\(id)\(path)"
+        if let query { string += "?\(query)" }
+        guard let url = URL(string: string) else { throw SheetsError.badSpreadsheetId }
+        return url
+    }
+
     func spreadsheetTitle() async throws -> String {
-        let url = URL(string: "\(base)/\(spreadsheetId)?fields=properties.title")!
+        let url = try makeURL(query: "fields=properties.title")
         let data = try await send(URLRequest(url: url))
         struct Resp: Decodable { struct P: Decodable { let title: String }; let properties: P }
         return try JSONDecoder().decode(Resp.self, from: data).properties.title
     }
 
     func ensureHeader() async throws {
-        let getURL = URL(string: "\(base)/\(spreadsheetId)/values/A1:E1")!
+        let getURL = try makeURL(path: "/values/A1:E1")
         let data = try await send(URLRequest(url: getURL))
         struct ValuesResp: Decodable { let values: [[String]]? }
         let existing = try JSONDecoder().decode(ValuesResp.self, from: data).values ?? []
         guard existing.isEmpty || existing.first?.isEmpty == true else { return }
 
-        var put = URLRequest(url: URL(string: "\(base)/\(spreadsheetId)/values/A1:E1?valueInputOption=RAW")!)
+        var put = URLRequest(url: try makeURL(path: "/values/A1:E1", query: "valueInputOption=RAW"))
         put.httpMethod = "PUT"
         put.setValue("application/json", forHTTPHeaderField: "Content-Type")
         put.httpBody = try JSONSerialization.data(withJSONObject: ["values": [Self.header]])
@@ -35,7 +45,7 @@ struct SheetsClient {
     }
 
     func append(row: [String]) async throws {
-        var req = URLRequest(url: URL(string: "\(base)/\(spreadsheetId)/values/A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS")!)
+        var req = URLRequest(url: try makeURL(path: "/values/A:E:append", query: "valueInputOption=RAW&insertDataOption=INSERT_ROWS"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: ["values": [row]])

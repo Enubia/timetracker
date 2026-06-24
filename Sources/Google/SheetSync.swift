@@ -46,7 +46,7 @@ actor SheetSync {
             }
             return .synced(now)
         } catch {
-            return items.isEmpty ? .synced(now) : .pending(items.count)
+            return .pending(items.count)
         }
     }
 
