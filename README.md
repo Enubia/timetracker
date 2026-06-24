@@ -1,0 +1,43 @@
+# TimeTracker
+
+A macOS menu-bar app that tracks work sessions and appends one row per session to a personal Google Sheet.
+
+## Google setup (one-time)
+
+1. console.cloud.google.com → create a project (`timetracking`).
+2. APIs & Services → Library → enable **Google Sheets API**.
+3. APIs & Services → Credentials → Create credentials → **Service account**.
+4. Service account → **Keys** → Add key → **JSON**; download it.
+5. Copy `client_email` from the JSON.
+6. In your Google Sheet → **Share** → paste `client_email` → **Editor**.
+7. Copy the Sheet ID from the URL: `docs.google.com/spreadsheets/d/<SHEET_ID>/edit`.
+
+In the app: open **Settings**, paste the JSON, paste the Sheet ID, click **Save & Test connection** (key is stored in the macOS Keychain).
+
+## Sheet format
+
+Columns: `date | total hours | start | break | end`. Date `yyyy-MM-dd`; start/end `HH:mm`; break & total `H:mm`. All times in `Europe/Vienna`. One row appended per session. `total = (end − start) − break`. If you take no manual break and the day is ≥ 6h gross, a 30-minute break is added automatically.
+
+## Build & run
+
+```bash
+brew install xcodegen
+xcodegen generate
+xcodebuild -project TimeTracker.xcodeproj -scheme TimeTracker -destination 'platform=macOS' build
+```
+
+To produce a standalone app you can drop in `/Applications`:
+
+```bash
+xcodebuild -project TimeTracker.xcodeproj -scheme TimeTracker -configuration Release \
+  -derivedDataPath build CODE_SIGN_IDENTITY=- build
+cp -R build/Build/Products/Release/TimeTracker.app /Applications/
+```
+
+## Tests
+
+```bash
+xcodebuild test -project TimeTracker.xcodeproj -scheme TimeTracker -destination 'platform=macOS'
+```
+
+Local data lives in `~/Library/Application Support/TimeTracker/` (`live-session.json`, `history.jsonl`, `pending.json`). `history.jsonl` is the source of truth; the Google Sheet is a sync target.
