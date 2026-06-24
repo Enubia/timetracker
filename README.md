@@ -22,22 +22,21 @@ Columns: `date | total hours | start | break | end`. Date `yyyy-MM-dd`; start/en
 
 ```bash
 brew install xcodegen
-xcodegen generate
-xcodebuild -project TimeTracker.xcodeproj -scheme TimeTracker -destination 'platform=macOS' build
+make build
 ```
 
-To produce a standalone app you can drop in `/Applications`:
+To produce a standalone app and drop it in `/Applications`:
 
 ```bash
-xcodebuild -project TimeTracker.xcodeproj -scheme TimeTracker -configuration Release \
-  -derivedDataPath build CODE_SIGN_IDENTITY=- build
-cp -R build/Build/Products/Release/TimeTracker.app /Applications/
+make install
 ```
+
+`make` targets: `build`, `test`, `release` (Release build under `build/`), `install` (release + copy to `/Applications`), `generate` (regenerate the Xcode project from `project.yml`), `clean`. The Xcode project is regenerated automatically whenever `project.yml` changes.
 
 ## Tests
 
 ```bash
-xcodebuild test -project TimeTracker.xcodeproj -scheme TimeTracker -destination 'platform=macOS'
+make test
 ```
 
 Local data lives in `~/Library/Application Support/TimeTracker/` (`live-session.json`, `history.jsonl`, `pending.json`). `history.jsonl` is the source of truth; the Google Sheet is a sync target.
