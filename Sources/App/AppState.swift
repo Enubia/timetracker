@@ -32,9 +32,9 @@ final class AppState: ObservableObject {
 
     var stateGlyph: String {
         switch session.state {
-        case .idle, .ended: return "clock"
-        case .working: return "play.circle.fill"
-        case .onBreak: return "pause.circle.fill"
+        case .idle, .ended: return "moon.zzz.fill"
+        case .working: return "hare.fill"
+        case .onBreak: return "cup.and.saucer.fill"
         }
     }
 

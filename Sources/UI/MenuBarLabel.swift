@@ -4,11 +4,13 @@ struct MenuBarLabel: View {
     @ObservedObject var app: AppState
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack {
             Image(systemName: app.stateGlyph)
             if let text = app.menuBarText {
-                Text(text)
+                Text(text).monospacedDigit()
             }
         }
+        .padding()
+        .font(.system(size: 20))
     }
 }
