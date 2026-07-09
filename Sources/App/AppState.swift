@@ -60,8 +60,16 @@ final class AppState: ObservableObject {
 
     func adjustStart(to newStart: Date) {
         guard session.state == .working || session.state == .onBreak else { return }
-        guard newStart <= Date() else { return }
-        session.start = newStart
+        let now = Date()
+        guard newStart <= now else { return }
+        try? session.adjustStart(to: newStart, asOf: now)
+        persist()
+    }
+
+    func adjustBreak(hours: Int, minutes: Int) {
+        guard session.state == .working || session.state == .onBreak else { return }
+        let totalMinutes = max(0, hours) * 60 + max(0, minutes)
+        try? session.setBreakSeconds(totalMinutes * 60, asOf: Date())
         persist()
     }
 

@@ -43,6 +43,44 @@ struct WorkSession: Codable, Equatable {
         }
         end = now
         state = .ended
+        clampBreakToGross(asOf: now)
+    }
+
+    mutating func setBreakSeconds(_ seconds: Int, asOf now: Date) throws {
+        guard state == .working || state == .onBreak else {
+            throw SessionError.invalidTransition
+        }
+        completedBreakSeconds = min(max(0, seconds), grossSeconds(asOf: now))
+        currentBreakStart = nil
+        if state == .onBreak {
+            state = .working
+        }
+    }
+
+    mutating func adjustStart(to newStart: Date, asOf now: Date) throws {
+        guard state == .working || state == .onBreak, newStart <= now else {
+            throw SessionError.invalidTransition
+        }
+        start = newStart
+        clampBreakToGross(asOf: now)
+    }
+
+    mutating func clampBreakToGross(asOf now: Date) {
+        completedBreakSeconds = max(0, completedBreakSeconds)
+        let cap = grossSeconds(asOf: now)
+        guard breakSeconds(asOf: now) > cap else { return }
+        switch state {
+        case .onBreak:
+            let activeSeconds = currentBreakStart.map { max(0, Int(now.timeIntervalSince($0))) } ?? 0
+            if activeSeconds <= cap {
+                completedBreakSeconds = cap - activeSeconds
+            } else {
+                completedBreakSeconds = 0
+                currentBreakStart = now.addingTimeInterval(TimeInterval(-cap))
+            }
+        default:
+            completedBreakSeconds = cap
+        }
     }
 
     func breakSeconds(asOf now: Date) -> Int {

@@ -111,4 +111,61 @@ final class WorkSessionTests: XCTestCase {
         XCTAssertEqual(s.grossSeconds(asOf: d("18:00:00")), 9 * 3600)
         XCTAssertEqual(s.netSeconds(asOf: d("18:00:00")), 8 * 3600)
     }
+
+    func testSetBreakWhileWorkingReplacesCompletedBreaks() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.beginBreak(at: d("10:00:00"))
+        try s.endBreak(at: d("10:15:00"))
+        try s.setBreakSeconds(30 * 60, asOf: d("12:00:00"))
+        XCTAssertEqual(s.state, .working)
+        XCTAssertEqual(s.completedBreakSeconds, 30 * 60)
+        XCTAssertNil(s.currentBreakStart)
+    }
+
+    func testSetBreakWhileOnBreakClosesBreakAndResumes() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.beginBreak(at: d("10:00:00"))
+        try s.setBreakSeconds(60 * 60, asOf: d("11:00:00"))
+        XCTAssertEqual(s.state, .working)
+        XCTAssertEqual(s.completedBreakSeconds, 60 * 60)
+        XCTAssertNil(s.currentBreakStart)
+    }
+
+    func testSetBreakClampsToGrossDuration() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.setBreakSeconds(4 * 3600, asOf: d("12:00:00"))
+        XCTAssertEqual(s.completedBreakSeconds, 3 * 3600)
+        XCTAssertEqual(s.netSeconds(asOf: d("12:00:00")), 0)
+    }
+
+    func testAdjustStartClampsCompletedBreaksToGrossDuration() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.setBreakSeconds(2 * 3600, asOf: d("12:00:00"))
+        try s.adjustStart(to: d("11:30:00"), asOf: d("12:00:00"))
+        XCTAssertEqual(s.start, d("11:30:00"))
+        XCTAssertEqual(s.completedBreakSeconds, 30 * 60)
+    }
+
+    func testAdjustStartClampsActiveBreakWithoutResuming() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.beginBreak(at: d("10:00:00"))
+        try s.adjustStart(to: d("11:30:00"), asOf: d("12:00:00"))
+        XCTAssertEqual(s.state, .onBreak)
+        XCTAssertEqual(s.start, d("11:30:00"))
+        XCTAssertEqual(s.breakSeconds(asOf: d("12:00:00")), 30 * 60)
+    }
+
+    func testEndClampsBreaksToGrossDuration() throws {
+        var s = WorkSession.idle()
+        try s.start(at: d("09:00:00"))
+        try s.setBreakSeconds(3 * 3600, asOf: d("12:00:00"))
+        try s.end(at: d("10:00:00"))
+        XCTAssertEqual(s.breakSeconds(asOf: d("10:00:00")), 3600)
+        XCTAssertEqual(s.netSeconds(asOf: d("10:00:00")), 0)
+    }
 }
